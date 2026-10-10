@@ -1,0 +1,1108 @@
+{
+  "name": "FokusTV - Reporter Draft Publisher",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "b4369c01-c257-46a4-a7c4-dd5c146fe239",
+      "name": "When Executed by News Hunter",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -64,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "db672952-6491-4042-96f8-78d2fc300791",
+              "name": "topic",
+              "value": "={{ $json.topic }}",
+              "type": "string"
+            },
+            {
+              "id": "b26a9b6e-d0c8-4509-ba44-ce530892e2da",
+              "name": "source",
+              "value": "={{ $json.source }}",
+              "type": "string"
+            },
+            {
+              "id": "a192a239-d479-4a83-9b59-e388ff4aa625",
+              "name": "url",
+              "value": "={{ $json.url }}",
+              "type": "string"
+            },
+            {
+              "id": "29bc9ed6-93bd-4ce1-aeb6-a059fb6caba3",
+              "name": "category",
+              "value": "={{ $json.category }}",
+              "type": "string"
+            },
+            {
+              "id": "f54c8d3f-33a8-4609-b487-dda584ae4034",
+              "name": "source_text",
+              "value": "={{ $json.source_text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4513de3a-31ab-4239-99b0-467a6fcffb24",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        112,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are the Senior AI Reporter for FokusTV, a Serbian entertainment, celebrity, and reality TV news portal.\n\nCreate a complete, original, publication-ready news article in Serbian Latin script based only on the information provided below.\n\nINPUT DATA:\n\nTOPIC:\n{{ $json.body?.topic || $json.topic }}\n\nSOURCE NAME:\n{{ $json.body?.source || $json.source }}\n\nSOURCE URL:\n{{ $json.body?.url || $json.url }}\n\nSOURCE MATERIAL:\n{{ $json.body?.source_text || $json.source_text }}\n\nCATEGORY:\n{{ $json.body?.category || $json.category }}\n\nMAIN RULE:\nSOURCE MATERIAL is the only factual source.\n\nDo not use TOPIC, HUNTER SCORE, HUNTER REASON, or RECOMMENDED ANGLE as facts. They are only editorial hints.\n\nBefore writing, silently identify from SOURCE MATERIAL:\n- all named people\n- who did what\n- what exactly happened\n- direct quotes\n- what is speculation and what is stated as fact\n- source attribution\n- whether another outlet is credited inside SOURCE MATERIAL\n\nYou must use concrete facts from SOURCE MATERIAL.\n\nNever write that information is missing if SOURCE MATERIAL contains it.\n\nBad:\n\"Nije navedeno ko je muškarac\"\nif SOURCE MATERIAL says \"Osman Karić\".\n\nBad:\n\"Direktni citati nisu dostupni\"\nif SOURCE MATERIAL contains a quote.\n\nBad:\n\"Nije jasno šta se dogodilo\"\nif SOURCE MATERIAL states the concrete action.\n\nFACTUALITY RULES:\n\nDo not invent:\n- names\n- relationships\n- dates\n- events\n- locations\n- claims\n- reactions on social media\n- public outrage\n- confirmations or denials\n- legal consequences\n- who made a recording\n- who recorded whom\n- whether something was done without consent\n\nIf SOURCE MATERIAL says someone \"showed recordings secretly\", do not rewrite that as \"secretly recorded\" or \"made recordings\".\n\nIf a claim is attributed to a person, preserve attribution:\n- \"Slađa tvrdi...\"\n- \"Kako je navela...\"\n- \"Prema njenim rečima...\"\n- \"Ona je rekla...\"\n\nIf SOURCE MATERIAL contains \"(Informer)\" and SOURCE NAME is Blic, treat it as:\nBlic relayed or republished Informer.\n\nDo not repeat the source name in every paragraph.\n\nUse natural attribution:\n- \"za domaće medije\"\n- \"kako prenose domaći mediji\"\n- \"prema navodima iz izvora\"\n\nAt the end, include the exact source link once.\n\nDIRECT QUOTE RULES:\n\nIf SOURCE MATERIAL contains a direct quote relevant to the main story, include that quote exactly as written.\n\nDo not shorten central quotes unless they are extremely long.\n\nIf the quote explains the story, it is mandatory.\n\nDo not paraphrase a central quote instead of quoting it.\n\nUse Serbian quotation marks „ and “ inside article text.\n\nDo not use straight double quotation marks inside Serbian article text.\n\nNAMED FACTS RULE:\n\nIf SOURCE MATERIAL names a person, use that exact name.\n\nDo not make the article vague.\n\nBad:\n\"poznati muškarac\"\n\"pomenuti muškarac\"\n\"nije navedeno ko je muškarac\"\n\nGood:\n\"Osman Karić\"\n\"Sofija Janićijević\"\n\"Borislav Terzić Terza\"\n\"Slađa Lazić Poršelina\"\n\"Radomir Marinković Taki\"\n\nFIRST PARAGRAPH RULE:\n\nThe first paragraph must contain:\n- full names of the main people\n- the concrete event from SOURCE MATERIAL\n- no vague filler\n\nBad opening:\n\"Tema trenutno privlači veliku pažnju...\"\n\nGood opening:\n\"Sofija Janićijević i Borislav Terzić Terza ponovo su se zapratili na Instagramu nakon finala Elite 9, zbog čega su počele spekulacije o njihovom pomirenju.\"\n\nFORBIDDEN EMPTY PHRASES:\n\nDo not use generic filler such as:\n- \"javnost bruji\"\n- \"mnogi su ostali bez reči\"\n- \"tema je jedna od najkomentarisanijih\"\n- \"privlači veliku pažnju\"\n- \"situacija se razvija\"\n- \"detalji nisu dostupni\"\n- \"za sada nije poznato\"\n- \"pratite zvanične izjave\"\n\nunless SOURCE MATERIAL explicitly states that.\n\nARTICLE STYLE:\n\n- Serbian Latin script.\n- Tabloid/news style, but factually precise.\n- Short paragraphs.\n- Strong but truthful headline.\n- No unsupported clickbait.\n- No invented background.\n- No generic AI language.\n- No lists unless necessary.\n- Do not copy the source text word for word, except direct quotes.\n\nARTICLE HTML REQUIREMENTS:\n\nThe article_html field must be valid HTML.\n\nUse only:\n<p>\n<h2>\n<strong>\n<a>\n\nInside article_html include these exact placeholders exactly once:\n\n<!-- INLINE_IMAGE_1 -->\n<!-- INLINE_IMAGE_2 -->\n<!-- INTERNAL_LINK_1 -->\n\nPlacement:\n- Put <!-- INLINE_IMAGE_1 --> immediately after the second paragraph.\n- Put <!-- INTERNAL_LINK_1 --> after an early paragraph or after the first relevant H2 section.\n- Put <!-- INLINE_IMAGE_2 --> immediately before the final source paragraph.\n\nDo not put placeholders inside HTML tags.\n\nAt the end of article_html, include this source paragraph exactly once, using the provided SOURCE URL and SOURCE NAME:\n\n<p>Izvor: <a href=\"{{ $json.body?.url || $json.url }}\" target=\"_blank\" rel=\"nofollow noopener\">{{ $json.body?.source || $json.source }}</a></p>\n\nDo not link the source to FokusTV.\nInternal links may appear only through <!-- INTERNAL_LINK_1 -->.\n\nYOAST SEO REQUIREMENTS:\n\nCreate one natural Serbian focus keyphrase containing 3 to 6 words.\n\nThe focus_keyword must be a phrase people could realistically search for.\n\nUse the exact focus_keyword:\n- near the beginning of seo_title\n- exactly once in meta_description\n- naturally in the introductory paragraph\n- at least one more time in the article body\n- in at least one H2 subheading when natural\n\nOUTPUT FORMAT:\n\nReturn ONLY one valid raw JSON object.\n\nDo not use markdown.\nDo not use code fences.\nDo not write explanations before or after JSON.\nDo not return the article as plain text.\nDo not wrap the result inside an output object.\n\nThe first character must be {\nThe last character must be }\n\nReturn exactly these top-level fields:\n\nheadline\nseo_title\nmeta_description\nslug\ncategory\ntags\nfocus_keyword\narticle_html\ninternal_link_suggestions\n\nFIELD RULES:\n\nheadline:\nStrong Serbian news headline. No unsupported claims.\n\nseo_title:\nSEO title in Serbian. Must include exact focus_keyword near the beginning.\n\nmeta_description:\n140 to 155 characters. Must include exact focus_keyword exactly once.\n\nslug:\nLowercase Serbian Latin slug. Hyphens only. No Serbian diacritics.\n\ncategory:\nUse provided CATEGORY value exactly.\n\ntags:\nJSON array of 5 to 8 Serbian tag strings. No duplicates.\n\nfocus_keyword:\nOne natural Serbian phrase, 3 to 6 words.\n\narticle_html:\nOne valid HTML string.\n\ninternal_link_suggestions:\nJSON array of 3 to 6 Serbian search phrases. No URLs.\n\nSTRICT JSON RULES:\n\nUse standard JSON double quotes around field names and string values.\n\nInside JSON string values:\n- Do not use unescaped straight double quotes.\n- For Serbian quotes, use „ and “.\n- Escape any unavoidable straight double quote as \\\".\n\nReturn no extra fields.\n\nEDITORIAL MODE RULES:\n\nThere are two editorial modes:\n\n1. STRICT SOURCE MODE\nUse this mode for sensitive claims:\n- intimate recordings or private photos\n- crime\n- legal issues\n- health\n- pregnancy\n- violence\n- accusations\n- cheating\n- serious family conflict\n\nIn STRICT SOURCE MODE:\n- use only SOURCE MATERIAL\n- preserve attribution\n- include direct quotes when central\n- do not add interpretation\n\n2. AUTHORIAL ENTERTAINMENT MODE\nUse this mode for light entertainment and reality-show context:\n- social media follows/unfollows\n- public Instagram activity\n- outfits\n- parties\n- public appearances\n- non-sensitive relationship speculation\n- general reality-show dynamics\n\nIn AUTHORIAL ENTERTAINMENT MODE:\n- you may write in a more natural tabloid style\n- you may add light editorial framing\n- you may use phrases like „fanovi spekulišu“, „potez je pokrenuo priče“, „mnogi ovo tumače kao signal“\n- you may use known reality-show context if it is directly connected to the topic\n- do not invent new events, quotes, accusations, confirmations, or private facts\n\nIf there is any doubt, use STRICT SOURCE MODE.\n\nAUTHORIAL MODE LIMITS:\n\nEven in AUTHORIAL ENTERTAINMENT MODE:\n- do not present speculation as confirmed fact\n- do not say people reconciled unless source confirms reconciliation\n- do not invent direct quotes\n- do not invent private meetings, messages, conflicts, or plans\n- write „spekuliše se“, „fanovi tumače“, „potez je pokrenuo priče“ when the conclusion is interpretation\nSOURCE LINK RULE:\n\nIf SOURCE URL is provided, the final paragraph of article_html must be:\n\n<p>Izvor: <a href=\"SOURCE_URL\" target=\"_blank\" rel=\"nofollow noopener\">SOURCE NAME</a></p>\n\nReplace SOURCE_URL with the exact provided SOURCE URL.\nReplace SOURCE NAME with the exact provided SOURCE NAME.\n\nNever use a FokusTV URL as the source URL.\nNever link the source attribution to the article being created.\nLANGUAGE QUALITY RULES:\n\nUse correct Serbian Latin spelling and grammar.\n\nDo not invent awkward forms.\n\nCorrect:\n- zapraćivanje\n- ponovo su se zapratili\n- usputan gest\n- definitivno\n\nIncorrect:\n- zapravljanje\n- zapratili jedno drugome na profilima\n- usputna gestura\n- definitvno\n\nBefore final JSON, silently proofread article_html for spelling, grammar, and awkward Serbian phrasing.\n\nSOURCE DIVERSITY RULE:\n\nYou are evaluating candidates from multiple Serbian entertainment sources.\n\nDo not automatically prefer Blic just because it has cleaner or more familiar headlines.\n\nChoose the strongest topic based on:\n- drama potential\n- recognisable reality TV names\n- freshness\n- emotional conflict\n- shareability\n\nIf two topics have similar priority_score, prefer the topic from Pink Zadruga or Kurir Zadruga to diversify sources.\n\nAlways include source_name in your reasoning.",
+        "batching": {}
+      },
+      "id": "97545cd3-9101-44b7-b35c-28698e8d5763",
+      "name": "Basic LLM Chain",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        944,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-sonnet-4-6",
+          "cachedResultName": "Claude Sonnet 4.6"
+        },
+        "options": {}
+      },
+      "id": "41b9885e-eefd-4160-bf37-4568a758df23",
+      "name": "Anthropic Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.5,
+      "position": [
+        992,
+        208
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1DtFqT3hOPfv5Kxy",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "output.tags",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "id": "1178613c-83bd-4433-b19e-c31e08cafdea",
+      "name": "Split Out",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1776,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://fokustv.rs/wp-json/wp/v2/tags?search=' + encodeURIComponent($json[\"output.tags\"]) }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wordpressApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "slug",
+              "value": "={{ $json[\"output.tags\"].toLowerCase().normalize(\"NFD\").replace(/[\\u0300-\\u036f]/g, \"\").replace(/đ/g, \"d\").replace(/[^a-z0-9]+/g, \"-\").replace(/^-+|-+$/g, \"\") }}\n"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "03e77774-ccb2-43cd-be53-1573a1d47459",
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1936,
+        -96
+      ],
+      "credentials": {
+        "wordpressApi": {
+          "id": "tZpXPzTHngznpMDg",
+          "name": "Wordpress account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "3c764932-8ef4-4860-b25b-a4e4b1e51b8e",
+              "leftValue": "={{ $json.body.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "727cdc44-6656-4325-8d14-5e6a61941592",
+      "name": "If",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2096,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://fokustv.rs/wp-json/wp/v2/media",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wordpressApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "search",
+              "value": "={{ $json.output.tags[1] || $json.output.tags[0] || $json.output.focus_keyword }}"
+            },
+            {
+              "name": "media_type",
+              "value": "image"
+            },
+            {
+              "name": "per_page",
+              "value": "10"
+            },
+            {
+              "name": "orderby ",
+              "value": "date"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b62ff602-7098-4856-abfb-eb5e16558d93",
+      "name": "HTTP Request6",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1120,
+        -304
+      ],
+      "credentials": {
+        "wordpressApi": {
+          "id": "tZpXPzTHngznpMDg",
+          "name": "Wordpress account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://fokustv.rs/wp-json/wp/v2/media",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wordpressApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "search",
+              "value": "={{ $json.output.tags[2] || $json.output.tags[3] || $json.output.focus_keyword }}"
+            },
+            {
+              "name": "media_type",
+              "value": "image"
+            },
+            {
+              "name": "per_page",
+              "value": "10"
+            },
+            {
+              "name": "orderby ",
+              "value": "date"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a61f5b86-89b8-43e0-8244-4b37059db067",
+      "name": "HTTP Request11",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1120,
+        -464
+      ],
+      "credentials": {
+        "wordpressApi": {
+          "id": "tZpXPzTHngznpMDg",
+          "name": "Wordpress account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "550bb697-3cb8-4b20-b9cd-9182c9520d05",
+      "name": "Merge1",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1344,
+        -368
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = $('Normalize AI Output').first().json.output;\n\nconst articleHtml = output.article_html;\n\nconst image1Candidates = $('HTTP Request6').all().map(item => item.json);\nconst image2Candidates = $('HTTP Request11').all().map(item => item.json);\n\nconst sourceData = $('Edit Fields').first().json;\n\nconst sourceName =\n  sourceData.source ||\n  output.source_name ||\n  'Izvor';\n\nconst sourceUrl =\n  sourceData.url ||\n  output.source_url ||\n  null;\n\nconst image1SearchTerms = [\n  output.tags?.[1],\n  output.tags?.[0],\n  output.focus_keyword\n].filter(Boolean);\n\nconst image2SearchTerms = [\n  output.tags?.[2],\n  output.tags?.[3],\n  output.focus_keyword\n].filter(Boolean);\n\n\nconst relevantInternalLinkHtml =\n  $('Pick Relevant Internal Link').first().json.relevant_internal_link_html || '';\n\nconst getImageUrl = (media) =>\n  media?.source_url ||\n  media?.guid?.rendered ||\n  null;\nconst getMediaText = (media) =>\n  [\n    media?.title?.rendered,\n    media?.alt_text,\n    media?.caption?.rendered,\n    media?.description?.rendered,\n    media?.slug,\n    media?.source_url,\n    media?.guid?.rendered\n  ]\n    .filter(Boolean)\n    .join(' ')\n    .toLowerCase();\n\nconst normalizeText = (value) =>\n  String(value || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'dj')\n    .replace(/ć/g, 'c')\n    .replace(/č/g, 'c')\n    .replace(/š/g, 's')\n    .replace(/ž/g, 'z');\n\nconst scoreMedia = (media, searchTerms, usedUrls = []) => {\n  const url = getImageUrl(media);\n\n  if (!url) return -9999;\n  if (usedUrls.includes(url)) return -9999;\n\n  const text = normalizeText(getMediaText(media));\n  let score = 0;\n\n  for (const term of searchTerms) {\n    const normalizedTerm = normalizeText(term);\n\n    if (!normalizedTerm) continue;\n\n    if (text.includes(normalizedTerm)) {\n      score += 50;\n    }\n\n    const words = normalizedTerm.split(/\\s+/).filter(Boolean);\n\n    for (const word of words) {\n      if (word.length > 2 && text.includes(word)) {\n        score += 10;\n      }\n    }\n  }\n\n  if (media?.alt_text) score += 8;\n  if (media?.caption?.rendered) score += 5;\n  if (media?.description?.rendered) score += 3;\n\n  const title = normalizeText(media?.title?.rendered || '');\n  const slug = normalizeText(media?.slug || '');\n  const source = normalizeText(url);\n\n  if (title.includes('chatgpt') || slug.includes('chatgpt') || source.includes('chatgpt')) {\n    score -= 30;\n  }\n\n  if (title.includes('screenshot') || slug.includes('screenshot') || source.includes('screenshot')) {\n    score -= 10;\n  }\n\n  if (media?.date) {\n    const timestamp = new Date(media.date).getTime();\n    if (!Number.isNaN(timestamp)) {\n      score += Math.min(10, timestamp / 1000000000000);\n    }\n  }\n\n  return score;\n};\n\nconst pickBestImage = (candidates, searchTerms, usedUrls = []) => {\n  const validCandidates = candidates.filter(media => getImageUrl(media));\n\n  if (!validCandidates.length) {\n    return null;\n  }\n\n  return validCandidates\n    .map(media => ({\n      media,\n      score: scoreMedia(media, searchTerms, usedUrls)\n    }))\n    .sort((a, b) => b.score - a.score)[0].media;\n};\n\nconst escapeHtml = (value) =>\n  String(value || '')\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\"/g, '&quot;')\n    .replace(/'/g, '&#039;');\n\nconst cleanText = (value) =>\n  String(value || '')\n    .replace(/<[^>]*>/g, '')\n    .replace(/\"/g, '&quot;')\n    .trim();\n\nconst getAlt = (media, fallback) =>\n  cleanText(\n    media?.alt_text ||\n    media?.title?.rendered ||\n    fallback\n  );\n\nconst image1 = pickBestImage(image1Candidates, image1SearchTerms);\nconst image1Url = getImageUrl(image1);\n\nconst image2 = pickBestImage(image2Candidates, image2SearchTerms, [image1Url]);\nconst image2Url = getImageUrl(image2);\n\nif (!articleHtml) {\n  throw new Error('Nedostaje article_html iz Basic LLM Chain.');\n}\n\nif (!image1Url) {\n  throw new Error('Nedostaje URL prve slike.');\n}\n\nif (!image2Url) {\n  throw new Error('Nedostaje URL druge slike.');\n}\n\nconst figure1 = `\n<figure class=\"wp-block-image size-full\">\n  <img src=\"${escapeHtml(image1Url)}\" alt=\"${getAlt(image1, 'Stanija Dobrojević')}\" />\n</figure>`;\n\nconst figure2 = `\n<figure class=\"wp-block-image size-full\">\n  <img src=\"${escapeHtml(image2Url)}\" alt=\"${getAlt(image2, 'Asmin Durdžić')}\" />\n</figure>`;\n\n// Pronalaženje svih završetaka pasusa\nconst paragraphMatches = [...articleHtml.matchAll(/<\\/p>/gi)];\n\nif (paragraphMatches.length < 3) {\n  throw new Error(\n    `Članak ima samo ${paragraphMatches.length} pasusa. Potrebna su najmanje 3.`\n  );\n}\n\n// Prva slika ide posle drugog pasusa\nconst firstInsertPosition =\n  paragraphMatches[1].index + paragraphMatches[1][0].length;\n\nlet finalHtml =\n  articleHtml.slice(0, firstInsertPosition) +\n  figure1 +\n  articleHtml.slice(firstInsertPosition);\n\n// Relevantan interni link ide posle prve slike\nif (relevantInternalLinkHtml && !finalHtml.includes(relevantInternalLinkHtml)) {\n  const figure1Position = finalHtml.indexOf(figure1) + figure1.length;\n\n  finalHtml =\n    finalHtml.slice(0, figure1Position) +\n    relevantInternalLinkHtml +\n    finalHtml.slice(figure1Position);\n}\n\n// Ponovo računamo pasuse nakon prve slike i relevantnog linka\nconst updatedParagraphs = [...finalHtml.matchAll(/<\\/p>/gi)];\n\n// Druga slika ide pre poslednjeg pasusa\nconst lastParagraphEndIndex =\n  updatedParagraphs[updatedParagraphs.length - 1].index;\n\nconst lastParagraphStartIndex =\n  finalHtml.lastIndexOf('<p', lastParagraphEndIndex);\n\nif (lastParagraphStartIndex === -1) {\n  throw new Error('Nije pronađen početak poslednjeg pasusa.');\n}\n\nfinalHtml =\n  finalHtml.slice(0, lastParagraphStartIndex) +\n  figure2 +\n  finalHtml.slice(lastParagraphStartIndex);\n\n// Spoljni link ka izvoru ide poslednji\nif (sourceUrl && !finalHtml.includes(sourceUrl)) {\n  const sourceParagraph = `\n<p class=\"article-source\">\n  Izvor: <a href=\"${escapeHtml(sourceUrl)}\" target=\"_blank\" rel=\"noopener noreferrer\">${escapeHtml(sourceName)}</a>\n</p>`;\n\n  finalHtml += sourceParagraph;\n}\n\nreturn [\n  {\n    json: {\n      article_html_with_images: finalHtml,\n      image_1_url: image1Url,\n      image_2_url: image2Url,\n      source_name: sourceName,\n      source_url: sourceUrl,\n      source_link_inserted: Boolean(sourceUrl),\n      relevant_internal_link_inserted: Boolean(relevantInternalLinkHtml),\n      images_inserted: true\n    }\n  }\n];"
+      },
+      "id": "33d27746-e6e1-4309-9b7d-06efa373cf21",
+      "name": "Code in JavaScript",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1728,
+        -384
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://fokustv.rs/wp-json/wp/v2/posts/' + $('Create Draft Post').first().json.id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wordpressApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"content\": {{ JSON.stringify($json.article_html_with_images) }}\n}",
+        "options": {}
+      },
+      "id": "2c2734ab-7713-44aa-a5a0-75e1a5861ade",
+      "name": "HTTP Request7",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1920,
+        -384
+      ],
+      "credentials": {
+        "wordpressApi": {
+          "id": "tZpXPzTHngznpMDg",
+          "name": "Wordpress account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://fokustv.rs/wp-json/wp/v2/posts/' + $('Create Draft Post').first().json.id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wordpressApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"meta\": {\n    \"_yoast_wpseo_title\": {{ JSON.stringify($('Normalize AI Output').first().json.output.seo_title) }},\n    \"_yoast_wpseo_metadesc\": {{ JSON.stringify($('Normalize AI Output').first().json.output.meta_description) }},\n    \"_yoast_wpseo_focuskw\": {{ JSON.stringify($('Normalize AI Output').first().json.output.focus_keyword) }}\n  }\n}",
+        "options": {}
+      },
+      "id": "57bafba1-0724-4212-a17a-3e0e89a6b22a",
+      "name": "HTTP Request9",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2192,
+        -368
+      ],
+      "credentials": {
+        "wordpressApi": {
+          "id": "tZpXPzTHngznpMDg",
+          "name": "Wordpress account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://fokustv.rs/wp-json/wp/v2/posts",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wordpressApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "per_page",
+              "value": "3"
+            },
+            {
+              "name": "orderby",
+              "value": "date"
+            },
+            {
+              "name": "status",
+              "value": "publish"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0af07acc-2901-4b31-93d1-40316ce03c65",
+      "name": "Get latest post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        352,
+        -416
+      ],
+      "credentials": {
+        "wordpressApi": {
+          "id": "tZpXPzTHngznpMDg",
+          "name": "Wordpress account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://fokustv.rs/wp-json/wp/v2/posts",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wordpressApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "search",
+              "value": "={{ $json.output.tags[1] }}"
+            },
+            {
+              "name": "per_page",
+              "value": "5"
+            },
+            {
+              "name": "status",
+              "value": "publish"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c7a40641-c777-4d0a-807a-f63a456bd89e",
+      "name": "Search Relevant Internal Post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        352,
+        -256
+      ],
+      "credentials": {
+        "wordpressApi": {
+          "id": "tZpXPzTHngznpMDg",
+          "name": "Wordpress account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const currentPostId = 12361;\n\nconst posts = $input.all().map(item => item.json);\n\nconst cleanText = (value) =>\n  String(value || '')\n    .replace(/<[^>]*>/g, '')\n    .replace(/&nbsp;/g, ' ')\n    .replace(/&#8211;/g, '–')\n    .replace(/&#8222;/g, '„')\n    .replace(/&#8220;/g, '“')\n    .replace(/&#8221;/g, '“')\n    .replace(/&quot;/g, '\"')\n    .replace(/&amp;/g, '&')\n    .trim();\n\nconst latestPost = posts.find(post => post.id !== currentPostId);\n\nif (!latestPost) {\n  return [\n    {\n      json: {\n        latest_internal_link_html: '',\n        latest_internal_link_found: false\n      }\n    }\n  ];\n}\n\nconst title = cleanText(latestPost.title?.rendered);\nconst link = latestPost.link;\n\nconst latestInternalLinkHtml =\n  `<p class=\"internal-link latest-link\">Najnovije sa FokusTV-a: <a href=\"${link}\">${title}</a></p>`;\n\nreturn [\n  {\n    json: {\n      latest_internal_link_html: latestInternalLinkHtml,\n      latest_internal_link_found: true,\n      latest_internal_link_title: title,\n      latest_internal_link_url: link,\n      latest_internal_link_id: latestPost.id\n    }\n  }\n];"
+      },
+      "id": "b88b91b9-71d2-4759-bfe7-9e92fbbae5e2",
+      "name": "Pick Latest Internal Link",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        -416
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const currentPostId = 12361;\n\nconst posts = $input.all().map(item => item.json);\n\nconst cleanText = (value) =>\n  String(value || '')\n    .replace(/<[^>]*>/g, '')\n    .replace(/&nbsp;/g, ' ')\n    .replace(/&#8211;/g, '–')\n    .replace(/&#8222;/g, '„')\n    .replace(/&#8220;/g, '“')\n    .replace(/&#8221;/g, '“')\n    .replace(/&quot;/g, '\"')\n    .replace(/&#038;/g, '&')\n    .replace(/&amp;/g, '&')\n    .trim();\n\nconst escapeHtml = (value) =>\n  String(value || '')\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\"/g, '&quot;')\n    .replace(/'/g, '&#039;');\n\nconst relevantPost = posts.find(post =>\n  post.id !== currentPostId &&\n  post.link &&\n  post.title?.rendered\n);\n\nif (!relevantPost) {\n  return [\n    {\n      json: {\n        relevant_internal_link_html: '',\n        relevant_internal_link_found: false\n      }\n    }\n  ];\n}\n\nconst title = cleanText(relevantPost.title.rendered);\nconst link = relevantPost.link;\n\nconst relevantInternalLinkHtml =\n  `<p class=\"internal-link relevant-link\">Pročitajte i: <a href=\"${escapeHtml(link)}\">${escapeHtml(title)}</a></p>`;\n\nreturn [\n  {\n    json: {\n      relevant_internal_link_html: relevantInternalLinkHtml,\n      relevant_internal_link_found: true,\n      relevant_internal_link_title: title,\n      relevant_internal_link_url: link,\n      relevant_internal_link_id: relevantPost.id\n    }\n  }\n];"
+      },
+      "id": "967391a6-5445-420b-b24c-74e20f23df5c",
+      "name": "Pick Relevant Internal Link",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        -256
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "94ec702f-a43c-4675-8d34-35b4a0f0e96d",
+      "name": "Merge Internal Links",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        704,
+        -336
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "b1ee1087-07ec-48ac-b56c-c6b0804aae48",
+      "name": "Merge Internal Links1",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1536,
+        -368
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://fokustv.rs/wp-json/wp/v2/posts",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wordpressApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"title\": {{ JSON.stringify($('Normalize AI Output').first().json.output.headline) }},\n  \"content\": {{ JSON.stringify($('Normalize AI Output').first().json.output.article_html) }},\n  \"slug\": {{ JSON.stringify($('Normalize AI Output').first().json.output.slug) }},\n  \"status\": \"draft\",\n  \"categories\": [2284]\n}",
+        "options": {}
+      },
+      "id": "8c61a4a3-a639-40ef-9230-2df3c54343cf",
+      "name": "Create Draft Post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1424,
+        -96
+      ],
+      "credentials": {
+        "wordpressApi": {
+          "id": "tZpXPzTHngznpMDg",
+          "name": "Wordpress account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "ffe33010-eda9-407e-aa1a-48238cc265f6",
+      "name": "Merge Tags And Post",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2400,
+        -368
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\nlet raw =\n  input.output ??\n  input.text ??\n  input.response ??\n  input.result ??\n  input.content ??\n  input.message;\n\nlet data;\n\nfunction cleanCodeFence(value) {\n  return String(value || '')\n    .replace(/^\\s*```json\\s*/i, '')\n    .replace(/^\\s*```\\s*/i, '')\n    .replace(/\\s*```\\s*$/i, '')\n    .trim();\n}\n\nfunction onlyJsonObject(value) {\n  const text = cleanCodeFence(value);\n  const firstBrace = text.indexOf('{');\n  const lastBrace = text.lastIndexOf('}');\n\n  if (firstBrace === -1 || lastBrace === -1) {\n    throw new Error('AI nije vratio JSON objekat.');\n  }\n\n  return text.slice(firstBrace, lastBrace + 1);\n}\n\nfunction decodeJsonLikeString(value) {\n  const text = String(value || '');\n\n  try {\n    return JSON.parse('\"' + text.replace(/\\n/g, '\\\\n') + '\"');\n  } catch (error) {\n    return text\n      .replace(/\\\\\"/g, '\"')\n      .replace(/\\\\n/g, '\\n')\n      .replace(/\\\\r/g, '')\n      .replace(/\\\\t/g, ' ')\n      .trim();\n  }\n}\n\nfunction serbianQuotes(value) {\n  let open = true;\n\n  return String(value || '').replace(/\"/g, () => {\n    const mark = open ? '„' : '“';\n    open = !open;\n    return mark;\n  });\n}\n\nfunction extractString(rawText, field, nextField) {\n  const regex = new RegExp(\n    `\"${field}\"\\\\s*:\\\\s*\"([\\\\s\\\\S]*?)\"\\\\s*,\\\\s*\"${nextField}\"\\\\s*:`\n  );\n\n  const match = rawText.match(regex);\n\n  if (!match) {\n    return '';\n  }\n\n  return decodeJsonLikeString(match[1]);\n}\n\nfunction extractArray(rawText, field, nextField = null) {\n  let regex;\n\n  if (nextField) {\n    regex = new RegExp(\n      `\"${field}\"\\\\s*:\\\\s*(\\\\[[\\\\s\\\\S]*?\\\\])\\\\s*,\\\\s*\"${nextField}\"\\\\s*:`\n    );\n  } else {\n    regex = new RegExp(\n      `\"${field}\"\\\\s*:\\\\s*(\\\\[[\\\\s\\\\S]*?\\\\])`\n    );\n  }\n\n  const match = rawText.match(regex);\n\n  if (!match) {\n    return [];\n  }\n\n  const arrayText = match[1];\n\n  try {\n    return JSON.parse(arrayText);\n  } catch (error) {\n    return [...arrayText.matchAll(/\"([^\"]+)\"/g)]\n      .map(item => item[1].trim())\n      .filter(Boolean);\n  }\n}\n\nif (raw && typeof raw === 'object') {\n  data = raw.output && typeof raw.output === 'object'\n    ? raw.output\n    : raw;\n} else {\n  raw = onlyJsonObject(raw);\n\n  try {\n    let parsed = JSON.parse(raw);\n\n    if (typeof parsed === 'string') {\n      parsed = JSON.parse(parsed);\n    }\n\n    data = parsed.output && typeof parsed.output === 'object'\n      ? parsed.output\n      : parsed;\n  } catch (error) {\n    data = {\n      headline: extractString(raw, 'headline', 'seo_title'),\n      seo_title: extractString(raw, 'seo_title', 'meta_description'),\n      meta_description: extractString(raw, 'meta_description', 'slug'),\n      slug: extractString(raw, 'slug', 'category'),\n      category: extractString(raw, 'category', 'tags'),\n      tags: extractArray(raw, 'tags', 'focus_keyword'),\n      focus_keyword: extractString(raw, 'focus_keyword', 'article_html'),\n      article_html: extractString(raw, 'article_html', 'internal_link_suggestions'),\n      internal_link_suggestions: extractArray(raw, 'internal_link_suggestions')\n    };\n  }\n}\n\nif (!Array.isArray(data.tags)) {\n  data.tags = String(data.tags || '')\n    .split(',')\n    .map(tag => tag.trim())\n    .filter(Boolean);\n}\n\nif (!Array.isArray(data.internal_link_suggestions)) {\n  data.internal_link_suggestions = String(data.internal_link_suggestions || '')\n    .split(',')\n    .map(item => item.trim())\n    .filter(Boolean);\n}\n\ndata.headline = serbianQuotes(data.headline);\ndata.seo_title = serbianQuotes(data.seo_title);\ndata.meta_description = serbianQuotes(data.meta_description);\ndata.focus_keyword = serbianQuotes(data.focus_keyword);\n\ndata.slug = String(data.slug || '')\n  .toLowerCase()\n  .normalize('NFD')\n  .replace(/[\\u0300-\\u036f]/g, '')\n  .replace(/đ/g, 'dj')\n  .replace(/[^a-z0-9]+/g, '-')\n  .replace(/^-+|-+$/g, '');\n\nconst requiredFields = [\n  'headline',\n  'seo_title',\n  'meta_description',\n  'slug',\n  'category',\n  'tags',\n  'focus_keyword',\n  'article_html',\n  'internal_link_suggestions',\n];\n\nfor (const field of requiredFields) {\n  if (!(field in data)) {\n    throw new Error(`Nedostaje obavezno polje: ${field}`);\n  }\n}\n\nif (!data.article_html) {\n  throw new Error('Nedostaje article_html.');\n}\n\nreturn [\n  {\n    json: {\n      output: {\n        headline: String(data.headline || ''),\n        seo_title: String(data.seo_title || ''),\n        meta_description: String(data.meta_description || ''),\n        slug: data.slug,\n        category: String(data.category || ''),\n        tags: data.tags,\n        focus_keyword: String(data.focus_keyword || ''),\n        article_html: String(data.article_html || ''),\n        internal_link_suggestions: data.internal_link_suggestions,\n      }\n    }\n  }\n];"
+      },
+      "id": "a25f6518-58d2-4576-a20c-5381b68169b4",
+      "name": "Normalize AI Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1264,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const tagId = $json.body?.[0]?.id;\n\nconst postId =\n  $json.post_id ||\n  $('Attach Post Context').first().json.post_id ||\n  $('Create Draft Post').first().json.id;\n\nif (!tagId) {\n  throw new Error('Nije pronađen postojeći tag ID u body[0].id');\n}\n\nif (!postId) {\n  throw new Error('Nije pronađen post_id za tag granu.');\n}\n\nreturn {\n  json: {\n    post_id: Number(postId),\n    tag_id: Number(tagId)\n  }\n};"
+      },
+      "id": "4627821e-ca8b-469d-b8ed-57a30c42e537",
+      "name": "Extract Existing Tag ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2336,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst postId = items[0]?.json?.post_id;\n\nif (!postId) {\n  throw new Error('Nedostaje post_id u tag grani.');\n}\n\nconst tagIds = items\n  .map(item => Number(item.json.tag_id))\n  .filter(id => Number.isInteger(id) && id > 0);\n\nconst uniqueTagIds = [...new Set(tagIds)];\n\nif (!uniqueTagIds.length) {\n  throw new Error('Nema tag ID-jeva za agregaciju.');\n}\n\nreturn [\n  {\n    json: {\n      post_id: Number(postId),\n      tag_ids: uniqueTagIds\n    }\n  }\n];"
+      },
+      "id": "4faf0e4d-a00d-4de8-8d8f-f6ba2cd9d687",
+      "name": "Aggregate Tag IDs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2544,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://fokustv.rs/wp-json/wp/v2/posts/' + $json.post_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wordpressApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"tags\": {{ JSON.stringify($json.tag_ids) }}\n}",
+        "options": {}
+      },
+      "id": "bd57b90c-3eef-48d3-82ab-12519e1015f9",
+      "name": "Set Post Tags",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2720,
+        -112
+      ],
+      "credentials": {
+        "wordpressApi": {
+          "id": "tZpXPzTHngznpMDg",
+          "name": "Wordpress account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const output = $('Normalize AI Output').first().json.output;\nconst postId = $json.id;\n\nif (!postId) {\n  throw new Error('Nedostaje post ID iz Create Draft Post.');\n}\n\nif (!output?.tags?.length) {\n  throw new Error('Nedostaju tagovi iz Normalize AI Output.');\n}\n\nreturn {\n  json: {\n    post_id: Number(postId),\n    output\n  }\n};"
+      },
+      "id": "13fe7e71-2962-4ca5-a9c8-9d00d894d8ea",
+      "name": "Attach Post Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const output = $('Normalize AI Output').first().json.output;\nconst sourceData = $('Edit Fields').first().json;\n\nconst headline = String(output.headline || '');\nconst focusKeyword = String(output.focus_keyword || '');\nconst topic = String(sourceData.topic || '');\nconst sourceText = String(sourceData.source_text || '');\n\nconst tags = Array.isArray(output.tags) ? output.tags : [];\n\nfunction clean(value) {\n  return String(value || '')\n    .replace(/[„“\"']/g, '')\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\n\nconst knownRealityPeople = [\n  'Stanija Dobrojević',\n  'Maja Marinković',\n  'Asmin Durdžić',\n  'Aneli Ahmić',\n  'Janjuš',\n  'Marko Janjušević Janjuš',\n  'Kristijan Golubović',\n  'Uroš Stanić',\n  'Ena Čolić',\n  'Jovan Pejić Peja',\n  'Milica Mitrović',\n  'Željko Mitrović',\n  'Anđela Ranković',\n  'Anđelo Ranković',\n  'Tara Simov',\n  'Bora Santana'\n];\n\nconst combinedText = `${headline} ${focusKeyword} ${topic} ${tags.join(' ')} ${sourceText}`;\n\nconst detectedPeople = knownRealityPeople\n  .filter(name => combinedText.toLowerCase().includes(name.toLowerCase()));\n\nconst mainPeople = detectedPeople.slice(0, 3);\n\nlet query1;\nlet query2;\nlet featuredQuery;\n\nif (mainPeople.length >= 2) {\n  featuredQuery = `${mainPeople[0]} ${mainPeople[1]}`;\n  query1 = `${mainPeople[0]} Zadruga Elita`;\n  query2 = `${mainPeople[1]} Zadruga Elita`;\n} else if (mainPeople.length === 1) {\n  featuredQuery = `${mainPeople[0]} Zadruga Elita`;\n  query1 = `${mainPeople[0]} Instagram`;\n  query2 = `${mainPeople[0]} Pink Zadruga`;\n} else {\n  featuredQuery = clean(focusKeyword || topic || headline);\n  query1 = clean(tags[0] || topic || headline);\n  query2 = clean(tags[1] || focusKeyword || topic || headline);\n}\n\nreturn {\n  json: {\n    ...$json,\n    image_search: {\n      main_people: mainPeople,\n      featured_query: clean(featuredQuery),\n      inline_query_1: clean(query1),\n      inline_query_2: clean(query2),\n      fallback_query: clean(`${focusKeyword} ${tags.slice(0, 2).join(' ')}`)\n    }\n  }\n};"
+      },
+      "id": "7665d6da-aebc-4baf-a0af-a8662cfe03e2",
+      "name": "Prepare Image Search Queries",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1296,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ 'https://fokustv.rs/wp-json/wp/v2/media?search=' + encodeURIComponent($json.image_search.featured_query) + '&per_page=10' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wordpressApi",
+        "options": {}
+      },
+      "id": "74be7709-eafb-4e49-9b88-7e6fafc12aa5",
+      "name": "Search Featured Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1504,
+        160
+      ],
+      "credentials": {
+        "wordpressApi": {
+          "id": "tZpXPzTHngznpMDg",
+          "name": "Wordpress account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const imageSearchData = $('Prepare Image Search Queries').first().json;\nconst mediaItems = Array.isArray($json) ? $json : ($json.body || []);\n\nconst results = Array.isArray(mediaItems)\n  ? mediaItems\n  : [];\n\nconst query = imageSearchData.image_search?.featured_query || '';\n\nif (!results.length) {\n  return {\n    json: {\n      ...imageSearchData,\n      featured_image_found: false,\n      featured_image_id: null,\n      featured_image_url: null,\n      featured_image_query: query\n    }\n  };\n}\n\nfunction scoreImage(item) {\n  const title = String(item.title?.rendered || item.title || '').toLowerCase();\n  const alt = String(item.alt_text || '').toLowerCase();\n  const caption = String(item.caption?.rendered || '').toLowerCase();\n  const sourceUrl = String(item.source_url || '');\n\n  let score = 0;\n\n  const queryWords = query\n    .toLowerCase()\n    .split(/\\s+/)\n    .filter(word => word.length > 2);\n\n  for (const word of queryWords) {\n    if (title.includes(word)) score += 5;\n    if (alt.includes(word)) score += 4;\n    if (caption.includes(word)) score += 2;\n    if (sourceUrl.toLowerCase().includes(word)) score += 1;\n  }\n\n  if (item.media_type === 'image') score += 10;\n  if (sourceUrl.match(/\\.(jpg|jpeg|png|webp)$/i)) score += 5;\n\n  return score;\n}\n\nconst ranked = results\n  .map(item => ({\n    item,\n    score: scoreImage(item)\n  }))\n  .sort((a, b) => b.score - a.score);\n\nconst best = ranked[0]?.item;\n\nif (!best?.id) {\n  return {\n    json: {\n      ...imageSearchData,\n      featured_image_found: false,\n      featured_image_id: null,\n      featured_image_url: null,\n      featured_image_query: query\n    }\n  };\n}\n\nreturn {\n  json: {\n    ...imageSearchData,\n    featured_image_found: true,\n    featured_image_id: best.id,\n    featured_image_url: best.source_url || null,\n    featured_image_query: query,\n    featured_image_title: best.title?.rendered || ''\n  }\n};"
+      },
+      "id": "3707822f-cf09-4de9-b931-91c3e89e0a77",
+      "name": "Pick Featured Image",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1712,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5d16b449-4834-46fe-9309-2254c3769f7d",
+              "leftValue": "={{ $json.featured_image_found }}",
+              "rightValue": "=",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "3548eb47-392e-4db1-b161-c58f6ea6ee3a",
+      "name": "If Featured Image Found",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1920,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://fokustv.rs/wp-json/wp/v2/posts/' + $('Create Draft Post').first().json.id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wordpressApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"featured_media\": {{ $('Pick Featured Image').first().json.featured_image_id }}\n}",
+        "options": {}
+      },
+      "id": "3c0306e1-af0e-4ffe-9959-cb9d77e90c58",
+      "name": "Set New Featured Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2336,
+        64
+      ],
+      "credentials": {
+        "wordpressApi": {
+          "id": "tZpXPzTHngznpMDg",
+          "name": "Wordpress account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "aa52dd7f-565f-4530-bf98-f0d72fc6b675",
+      "name": "Merge New Featured Image",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2144,
+        64
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Normalize AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Extract Existing Tag ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "HTTP Request11": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request6": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Merge Internal Links1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request7": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get latest post": {
+      "main": [
+        [
+          {
+            "node": "Pick Latest Internal Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Relevant Internal Post": {
+      "main": [
+        [
+          {
+            "node": "Pick Relevant Internal Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick Latest Internal Link": {
+      "main": [
+        [
+          {
+            "node": "Merge Internal Links",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick Relevant Internal Link": {
+      "main": [
+        [
+          {
+            "node": "Merge Internal Links",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Internal Links": {
+      "main": [
+        [
+          {
+            "node": "Merge Internal Links1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Internal Links1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Draft Post": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request11",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "HTTP Request6",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get latest post",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Search Relevant Internal Post",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Attach Post Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Tags And Post": {
+      "main": [
+        []
+      ]
+    },
+    "Normalize AI Output": {
+      "main": [
+        [
+          {
+            "node": "Create Draft Post",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare Image Search Queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Existing Tag ID": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Tag IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Tag IDs": {
+      "main": [
+        [
+          {
+            "node": "Set Post Tags",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request9": {
+      "main": [
+        [
+          {
+            "node": "Merge Tags And Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attach Post Context": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Image Search Queries": {
+      "main": [
+        [
+          {
+            "node": "Search Featured Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Featured Image": {
+      "main": [
+        [
+          {
+            "node": "Pick Featured Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick Featured Image": {
+      "main": [
+        [
+          {
+            "node": "If Featured Image Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Featured Image Found": {
+      "main": [
+        [
+          {
+            "node": "Merge New Featured Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge New Featured Image": {
+      "main": [
+        [
+          {
+            "node": "Create Draft Post",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Set New Featured Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by News Hunter": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "6b6d7092-d2d7-4cca-81da-e9acdf9490c2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "19919265019df2410ce48bcc4dd3d28a0d3ba36274ec03146834a410255ebd27"
+  },
+  "nodeGroups": [],
+  "id": "W0R7PBy3qXnpchOU",
+  "tags": []
+}

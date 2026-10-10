@@ -1,0 +1,851 @@
+{
+  "name": "FokusTV - News Hunter Topic Discovery and Ranking",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "2bced33a-62ab-43c6-84b6-a4af7f6a4581",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      source_name: 'Pink Zadruga',\n      source_url: 'https://www.pink.rs/zadruga',\n      category: 'Elita'\n    }\n  },\n  {\n    json: {\n      source_name: 'Republika Elita',\n      source_url: 'https://www.republika.rs/elita-9-farmeri',\n      category: 'Elita'\n    }\n  }\n];"
+      },
+      "id": "12d8d18f-ffaa-47b1-b183-699da569b1f8",
+      "name": "Define News Source1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.source_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+            },
+            {
+              "name": "Accept",
+              "value": "application/rss+xml,application/atom+xml,application/xml;q=0.9,*/*;q=0.8"
+            },
+            {
+              "name": "Accept-Language",
+              "value": "sr-RS,sr;q=0.9,en-US;q=0.8,en;q=0.7"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "4d60d26b-6a5a-49b7-96b5-eb8c2fd69501",
+      "name": "Fetch News Source Pages",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        448,
+        112
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fetchItems = $input.all();\nconst sourceItems = $('Define News Source1').all();\n\nfunction getBaseUrl(url) {\n  try {\n    return new URL(url).origin;\n  } catch (error) {\n    return '';\n  }\n}\n\nfunction cleanText(value) {\n  return String(value || '')\n    .replace(/<script[\\s\\S]*?<\\/script>/gi, ' ')\n    .replace(/<style[\\s\\S]*?<\\/style>/gi, ' ')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/&nbsp;/g, ' ')\n    .replace(/&amp;/g, '&')\n    .replace(/&quot;/g, '\"')\n    .replace(/&#x27;/g, \"'\")\n    .replace(/&#39;/g, \"'\")\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\n\nfunction normalizeUrl(href, baseUrl) {\n  if (!href) return '';\n\n  href = String(href).trim();\n\n  if (href.startsWith('http')) {\n    return href.split('?')[0];\n  }\n\n  if (href.startsWith('//')) {\n    return 'https:' + href.split('?')[0];\n  }\n\n  if (href.startsWith('/')) {\n    return baseUrl + href.split('?')[0];\n  }\n\n  return '';\n}\n\nfunction isValidArticle(url, title, baseUrl) {\n  if (!url || !title) return false;\n  if (title.length < 25) return false;\n\n  const lowerUrl = url.toLowerCase();\n  const lowerTitle = title.toLowerCase();\n\n  const domain = baseUrl\n    .replace('https://', '')\n    .replace('http://', '')\n    .toLowerCase();\n\n  if (domain && !lowerUrl.includes(domain)) return false;\n\n  const badUrlParts = [\n    '/tag/',\n    '/video/',\n    '/autor/',\n    '/login',\n    '/register',\n    '/newsletter',\n    '/privacy',\n    '/terms',\n    '#',\n    'javascript:',\n    'mailto:'\n  ];\n\n  for (const bad of badUrlParts) {\n    if (lowerUrl.includes(bad)) return false;\n  }\n\n  const badTitleParts = [\n    'facebook',\n    'instagram',\n    'whatsapp',\n    'viber',\n    'google news',\n    'najnovije vesti',\n    'najčitanije',\n    'marketing',\n    'oglasi',\n    'prijavite se',\n    'registrujte se',\n    'pretplatite se',\n    'tv uživo',\n    'naslovna'\n  ];\n\n  for (const bad of badTitleParts) {\n    if (lowerTitle.includes(bad)) return false;\n  }\n\n  return true;\n}\n\nconst allLinks = [];\n\nfor (let i = 0; i < fetchItems.length; i++) {\n  const fetchJson = fetchItems[i].json;\n  const sourceJson = sourceItems[i]?.json || {};\n\n  const sourceName =\n    fetchJson.source_name ||\n    sourceJson.source_name ||\n    'Nepoznat izvor';\n\n  const sourceUrl =\n    fetchJson.source_url ||\n    sourceJson.source_url ||\n    '';\n\n  const category =\n    fetchJson.category ||\n    sourceJson.category ||\n    'Elita';\n\n  // Ako je portal vratio 403/grešku, preskoči ga\n  if (fetchJson.error || fetchJson.status === 403 || fetchJson.code === 'ERR_BAD_REQUEST') {\n    continue;\n  }\n\n  const html =\n    fetchJson.data ??\n    fetchJson.body ??\n    fetchJson.html ??\n    fetchJson.response ??\n    fetchJson.text ??\n    '';\n\n  if (!html || String(html).length < 500) {\n    continue;\n  }\n\n  const baseUrl = getBaseUrl(sourceUrl);\n\n  const anchorRegex = /<a\\b[^>]*href=[\"']([^\"']+)[\"'][^>]*>([\\s\\S]*?)<\\/a>/gi;\n\n  let match;\n\n  while ((match = anchorRegex.exec(html)) !== null) {\n    const url = normalizeUrl(match[1], baseUrl);\n    const title = cleanText(match[2]);\n\n    if (!isValidArticle(url, title, baseUrl)) continue;\n\n    allLinks.push({\n      source_name: sourceName,\n      source_url: sourceUrl,\n      category,\n      title,\n      url\n    });\n  }\n}\n\nconst unique = [];\nconst seen = new Set();\n\nfor (const item of allLinks) {\n  const key = item.url.toLowerCase();\n\n  if (seen.has(key)) continue;\n\n  seen.add(key);\n  unique.push(item);\n}\n\nif (!unique.length) {\n  throw new Error('Nije pronađena nijedna validna vest iz HTML izvora. Proveri da li su portali blokirali request ili promenili strukturu.');\n}\n\nreturn unique.slice(0, 80).map(item => ({\n  json: item\n}));"
+      },
+      "id": "4b2e1547-fa9a-47f7-8a39-19dba956e6d8",
+      "name": "Code in JavaScript",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1tmd0kj8HuPUyW6ekZadY2KC8dWfLY4PdiprGv4bEOac/edit?pli=1&gid=0#gid=0",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "performance",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "72bff780-b640-4262-a516-f1e0346c9bdc",
+      "name": "Read Published History",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        896,
+        112
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "y864PEkOdzikxhM3",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const candidates = $('Code in JavaScript').all().map(item => item.json);\nconst historyRows = $('Read Published History').all().map(item => item.json);\n\nfunction normalize(value) {\n  return String(value || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'dj')\n    .replace(/[^a-z0-9\\s]/g, ' ')\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\n\nfunction normalizeUrl(value) {\n  return String(value || '')\n    .toLowerCase()\n    .replace(/^https?:\\/\\/(www\\.)?/, '')\n    .replace(/\\?.*$/, '')\n    .replace(/\\/$/, '')\n    .trim();\n}\n\nfunction words(value) {\n  const stopWords = new Set([\n    'i', 'je', 'su', 'se', 'sa', 'u', 'na', 'za', 'od', 'do', 'po',\n    'kao', 'koji', 'koja', 'koje', 'ovo', 'ona', 'on', 'oni', 'one',\n    'sada', 'nakon', 'posle', 'zbog', 'evo', 'foto', 'video',\n    'sok', 'šok', 'drama', 'detalji', 'otkriveno', 'poznato',\n    'ekskluzivno', 'hitno', 'skandal', 'isplivalo', 'saznajte'\n  ]);\n\n  return normalize(value)\n    .split(' ')\n    .filter(word => word.length >= 4 && !stopWords.has(word));\n}\n\nfunction similarity(a, b) {\n  const aWords = new Set(words(a));\n  const bWords = new Set(words(b));\n\n  if (!aWords.size || !bWords.size) return 0;\n\n  let overlap = 0;\n\n  for (const word of aWords) {\n    if (bWords.has(word)) overlap++;\n  }\n\n  return overlap / Math.min(aWords.size, bWords.size);\n}\n\nfunction parseDate(value) {\n  const time = Date.parse(value);\n  return Number.isNaN(time) ? null : time;\n}\n\nconst now = Date.now();\nconst cutoff = now - 48 * 60 * 60 * 1000;\n\nconst recentHistory = historyRows.filter(row => {\n  const rowTime = parseDate(row.date || row.selected_at || row.created_at || '');\n\n  if (!rowTime) return true;\n\n  return rowTime >= cutoff;\n});\n\nconst filtered = [];\n\nfor (const candidate of candidates) {\n  const candidateUrl = normalizeUrl(candidate.url || candidate.source_url || '');\n  const candidateTitle = candidate.title || candidate.topic || candidate.original_title || '';\n\n  let isDuplicate = false;\n  let duplicateReason = null;\n\n  for (const row of recentHistory) {\n    const oldUrl = normalizeUrl(row.source_url || row.url || '');\n    const oldTitle = row.topic || row.original_title || row.title || '';\n\n    if (candidateUrl && oldUrl && candidateUrl === oldUrl) {\n      isDuplicate = true;\n      duplicateReason = 'same_url';\n      break;\n    }\n\n    const score = similarity(candidateTitle, oldTitle);\n\n    if (score >= 0.45) {\n      isDuplicate = true;\n      duplicateReason = `similar_title_${score.toFixed(2)}`;\n      break;\n    }\n  }\n\n  if (!isDuplicate) {\n    filtered.push(candidate);\n  }\n}\n\nif (!filtered.length) {\n  throw new Error('Svi kandidati su već obrađeni ili previše slični vestima iz poslednjih 48h.');\n}\n\nreturn filtered.map(item => ({\n  json: item\n}));"
+      },
+      "id": "5e74afa0-504c-4d0e-92ee-46ec4549e00c",
+      "name": "Filter Already Published",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nfunction cleanTitle(value) {\n  return String(value || '')\n    .replace(/\\s+/g, ' ')\n    .replace(/^\\s*[\\-\\–\\—]+\\s*/, '')\n    .trim();\n}\n\nfunction isGoodCandidate(item) {\n  const title = cleanTitle(item.title);\n  const url = String(item.url || '').trim();\n\n  if (!title || !url) return false;\n  if (title.length < 25) return false;\n\n  const lowerTitle = title.toLowerCase();\n  const lowerUrl = url.toLowerCase();\n\n  const badTitles = [\n    'najčitanije',\n    'najnovije',\n    'marketing',\n    'oglasi',\n    'facebook',\n    'instagram',\n    'whatsapp',\n    'viber',\n    'google news',\n    'pridružite se',\n    'saznajte sve',\n    'tv uživo',\n    'naslovna'\n  ];\n\n  for (const bad of badTitles) {\n    if (lowerTitle.includes(bad)) return false;\n  }\n\n  const badUrls = [\n    '/tag/',\n    '/video/',\n    '/autor/',\n    '/login',\n    '/register',\n    '/newsletter',\n    '/privacy',\n    '/terms',\n    '#'\n  ];\n\n  for (const bad of badUrls) {\n    if (lowerUrl.includes(bad)) return false;\n  }\n\n  return true;\n}\n\nconst cleaned = items\n  .map(item => ({\n    source_name: item.json.source_name || 'Nepoznat izvor',\n    source_url: item.json.source_url || '',\n    category: item.json.category || 'Elita',\n    title: cleanTitle(item.json.title),\n    url: String(item.json.url || '').trim()\n  }))\n  .filter(isGoodCandidate);\n\nconst unique = [];\nconst seenUrls = new Set();\nconst seenTitles = new Set();\n\nfor (const item of cleaned) {\n  const urlKey = item.url.toLowerCase();\n  const titleKey = item.title.toLowerCase();\n\n  if (seenUrls.has(urlKey)) continue;\n  if (seenTitles.has(titleKey)) continue;\n\n  seenUrls.add(urlKey);\n  seenTitles.add(titleKey);\n\n  unique.push(item);\n}\n\nconst bySource = {};\n\nfor (const item of unique) {\n  if (!bySource[item.source_name]) {\n    bySource[item.source_name] = [];\n  }\n\n  if (bySource[item.source_name].length < 7) {\n    bySource[item.source_name].push(item);\n  }\n}\n\nconst sourceKeys = Object.keys(bySource);\nconst maxPerSourceLength = Math.max(0, ...sourceKeys.map(key => bySource[key].length));\n\nconst interleaved = [];\n\nfor (let i = 0; i < maxPerSourceLength; i++) {\n  for (const key of sourceKeys) {\n    if (bySource[key][i]) {\n      interleaved.push(bySource[key][i]);\n    }\n  }\n}\n\nconst finalCandidates = interleaved.slice(0, 30);\n\nif (!finalCandidates.length) {\n  throw new Error('Nema kandidata posle čišćenja.');\n}\n\nreturn finalCandidates.map(item => ({\n  json: item\n}));\n"
+      },
+      "id": "8ce6e466-618e-4515-818e-309c4338668d",
+      "name": "Clean and Prepare Articles",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst candidates = items\n  .map((item, index) => {\n    const title = String(item.json.title || '').trim();\n    const url = String(item.json.url || '').trim();\n    const source = String(item.json.source_name || 'Nepoznat izvor').trim();\n    const category = String(item.json.category || 'Elita').trim();\n\n    if (!title || !url) return null;\n\n    return {\n      rank_input: index + 1,\n      title,\n      url,\n      source,\n      category\n    };\n  })\n  .filter(Boolean)\n  .slice(0, 10);\n\nif (!candidates.length) {\n  throw new Error('Nema kandidata za Hunter evaluaciju.');\n}\n\nconst candidates_text = candidates\n  .map(candidate => {\n    return `${candidate.rank_input}. ${candidate.title}\nURL: ${candidate.url}\nSOURCE: ${candidate.source}\nCATEGORY: ${candidate.category}`;\n  })\n  .join('\\n\\n');\n\nconst sourcesUsed = [...new Set(candidates.map(c => c.source))].join(', ');\n\nreturn [\n  {\n    json: {\n      source_name: sourcesUsed || 'Više izvora',\n      source_url: '',\n      category: 'Elita',\n      candidate_count: candidates.length,\n      candidates,\n      candidates_text\n    }\n  }\n];\n"
+      },
+      "id": "6a0136de-557f-481c-80b6-ae1f7cc251ad",
+      "name": "Prepare Hunter Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a content strategist for FokusTV, a Serbian entertainment news outlet.\n\nAnalyze these article candidates and rank the TOP 3 most relevant topics for our audience.\n\nTARGET AUDIENCE:\n- Primary: women aged 35+\n- Interests: Serbian reality TV shows, celebrity gossip, family drama, conflicts, scandals, lifestyle news\n\nCANDIDATES COME FROM MULTIPLE SOURCES:\n{{ $json.source_name }}\n\nCATEGORY:\n{{ $json.category }}\n\nARTICLE CANDIDATES:\n{{ $json.candidates_text }}\n\nEVALUATION CRITERIA:\n1. Drama potential and emotional appeal: 40%\n2. Celebrity recognition in Serbia: 30%\n3. Reality TV connection: 20%\n4. Shareability and discussion potential: 10%\n\nIMPORTANT SOURCE DIVERSITY RULE:\n- Do not pick all top topics from the same source. Prefer variety across sources when quality is comparable.\n- Keep the source and url EXACTLY as given for each chosen candidate.\n\nFor each selected topic, provide:\n- rank\n- topic\n- original title\n- source URL\n- source\n- category\n- priority score from 0 to 100\n- short reason\n- recommended FokusTV angle\n\nReturn ONLY valid JSON matching the required output schema.\n\nDo not use markdown.\nDo not use code fences.\nDo not invent facts.\nOnly evaluate the provided article candidates.\nReturn maximum 3 top topics.\nThe best_topic must be the same object as top_topics[0].\n\nCRITICAL OUTPUT RULES:\n\nReturn ONLY valid JSON.\n\nDo not write explanations before JSON.\nDo not write explanations after JSON.\nDo not use markdown.\nDo not use ```json.\nDo not add comments.\n\nThe response must match exactly this structure:\n\n{\n  \"top_topics\": [\n    {\n      \"rank\": 1,\n      \"topic\": \"Short topic summary\",\n      \"title\": \"Original article title\",\n      \"url\": \"Original article URL\",\n      \"source\": \"Source name\",\n      \"category\": \"Elita\",\n      \"priority_score\": 95,\n      \"reason\": \"Why this topic is strong for FokusTV\",\n      \"recommended_angle\": \"How FokusTV should cover this topic\"\n    }\n  ],\n  \"best_topic\": {\n    \"rank\": 1,\n    \"topic\": \"Short topic summary\",\n    \"title\": \"Original article title\",\n    \"url\": \"Original article URL\",\n    \"source\": \"Source name\",\n    \"category\": \"Elita\",\n    \"priority_score\": 95,\n    \"reason\": \"Why this is the best topic\",\n    \"recommended_angle\": \"Best editorial angle\"\n  }\n}\n\nUse only candidates from ARTICLE CANDIDATES.\nEvery url must be copied exactly from the candidate.\nEvery source must be copied exactly from the candidate.\npriority_score must be a number from 1 to 100.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are an expert content strategist specializing in Serbian entertainment media. You understand what resonates with audiences interested in reality TV, celebrity news, and drama. Always provide structured, actionable recommendations."
+        }
+      },
+      "id": "b92f4ad5-e211-47a6-a28b-1b3abaea1dc0",
+      "name": "Evaluate Topics for FokusTV",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1792,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-sonnet-4-6",
+          "cachedResultName": "Claude Sonnet 4.6"
+        },
+        "options": {}
+      },
+      "id": "45fa5e9d-cf55-428a-8a60-0573189d4c08",
+      "name": "Anthropic Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.5,
+      "position": [
+        1808,
+        336
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "1DtFqT3hOPfv5Kxy",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"top_topics\": [\n    {\n      \"rank\": 1,\n      \"topic\": \"Kratak opis teme\",\n      \"title\": \"Naslov izvornog članka\",\n      \"url\": \"https://www.blic.rs/zabava/primer\",\n      \"source\": \"Blic Zabava\",\n      \"category\": \"Elita\",\n      \"priority_score\": 95,\n      \"reason\": \"Zašto je tema relevantna za FokusTV publiku.\",\n      \"recommended_angle\": \"Kako FokusTV treba da obradi ovu temu.\"\n    }\n  ],\n  \"best_topic\": {\n    \"rank\": 1,\n    \"topic\": \"Kratak opis najbolje teme\",\n    \"title\": \"Naslov najboljeg izvornog članka\",\n    \"url\": \"https://www.blic.rs/zabava/primer\",\n    \"source\": \"Blic Zabava\",\n    \"category\": \"Elita\",\n    \"priority_score\": 95,\n    \"reason\": \"Zašto je ovo najbolja tema.\",\n    \"recommended_angle\": \"Najbolji ugao za obradu.\"\n  }\n}"
+      },
+      "id": "3add49b1-2b13-4ae9-9ce3-5377f9956752",
+      "name": "Topic Ranking Schema",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1936,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1tmd0kj8HuPUyW6ekZadY2KC8dWfLY4PdiprGv4bEOac/edit?gid=0#gid=0",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "performance",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1tmd0kj8HuPUyW6ekZadY2KC8dWfLY4PdiprGv4bEOac/edit#gid=0"
+        },
+        "options": {}
+      },
+      "id": "7166ef9f-708a-4e18-b73d-5567f62d21f9",
+      "name": "Read Decisions for Selection",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2144,
+        304
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "y864PEkOdzikxhM3",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const agentJson = $('Evaluate Topics for FokusTV').first().json;\nconst output = agentJson.output || agentJson;\nconst historyRows = $input.all().map(item => item.json).filter(r => r && Object.keys(r).length > 0);\n\nconst topTopics = output.top_topics || [];\n\nif (!Array.isArray(topTopics) || topTopics.length === 0) {\n  throw new Error('Hunter nije vratio top_topics.');\n}\n\nfunction normalize(value) {\n  return String(value || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'dj')\n    .replace(/[^a-z0-9\\s]/g, ' ')\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\n\nfunction normalizeUrl(value) {\n  return String(value || '')\n    .toLowerCase()\n    .replace(/^https?:\\/\\/(www\\.)?/, '')\n    .replace(/\\?.*$/, '')\n    .replace(/\\/$/, '')\n    .trim();\n}\n\nconst stopWords = new Set([\n  'i', 'je', 'su', 'se', 'sa', 'u', 'na', 'za', 'od', 'do', 'po',\n  'kao', 'koji', 'koja', 'koje', 'ovo', 'ona', 'on', 'oni', 'one',\n  'sada', 'nakon', 'posle', 'zbog', 'evo', 'foto', 'video',\n  'sok', 'šok', 'drama', 'detalji', 'otkriveno', 'poznato',\n  'ekskluzivno', 'hitno', 'skandal', 'isplivalo'\n]);\n\nfunction words(value) {\n  return normalize(value).split(' ').filter(w => w.length >= 4 && !stopWords.has(w));\n}\n\nfunction similarity(a, b) {\n  const aWords = new Set(words(a));\n  const bWords = new Set(words(b));\n  if (!aWords.size || !bWords.size) return 0;\n  let overlap = 0;\n  for (const w of aWords) if (bWords.has(w)) overlap++;\n  return overlap / Math.min(aWords.size, bWords.size);\n}\n\nfunction findDuplicate(t) {\n  const tUrl = normalizeUrl(t.url || '');\n  const titles = [t.topic || '', t.title || ''];\n  for (const row of historyRows) {\n    const oldUrl = normalizeUrl(row.source_url || row.url || '');\n    const oldTitle = row.topic || row.original_title || row.title || '';\n    if (tUrl && oldUrl && (tUrl === oldUrl || tUrl.endsWith(oldUrl) || oldUrl.endsWith(tUrl))) {\n      return { type: 'same_url', old_title: oldTitle, similarity: 1 };\n    }\n    const score = Math.max(...titles.map(x => similarity(x, oldTitle)));\n    if (score >= 0.45) {\n      return { type: 'similar_title', old_title: oldTitle, similarity: score };\n    }\n  }\n  return null;\n}\n\n// Rangiraj: prvo best_topic, pa ostale po priority_score\nconst candidates = [];\nif (output.best_topic) candidates.push(output.best_topic);\nconst sorted = [...topTopics].sort((a, b) => Number(b.priority_score || 0) - Number(a.priority_score || 0));\nfor (const t of sorted) {\n  if (!candidates.some(c => c.url === t.url && c.topic === t.topic)) candidates.push(t);\n}\n\nconst skipped = [];\nlet bestTopic = null;\nfor (const t of candidates) {\n  const dup = findDuplicate(t);\n  if (dup) {\n    skipped.push({ topic: t.topic, url: t.url, reason: dup });\n    continue;\n  }\n  bestTopic = t;\n  break;\n}\n\nif (!bestTopic) {\n  // Sve teme su vec obradjene - nema nove vesti u ovom krugu\n  return [];\n}\n\nreturn {\n  json: {\n    execution_status: 'ok',\n    source_name: bestTopic.source || 'Nepoznat izvor',\n    source_url: bestTopic.url,\n    category: bestTopic.category || 'Elita',\n    best_topic: bestTopic,\n    top_topics: topTopics,\n    skipped_duplicates: skipped,\n    reporter_input_preview: {\n      topic: bestTopic.topic,\n      source: bestTopic.source || 'Nepoznat izvor',\n      url: bestTopic.url,\n      category: bestTopic.category || 'Elita'\n    }\n  }\n};\n"
+      },
+      "id": "763fc43b-3d29-4f43-a738-df1e4b47b772",
+      "name": "Format Final Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2144,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ \n  $json.best_topic.url.startsWith('http')\n    ? $json.best_topic.url\n    : (\n        $json.best_topic.source === 'Pink Zadruga'\n          ? 'https://www.pink.rs'\n          : $json.best_topic.source === 'Republika Elita'\n            ? 'https://www.republika.rs'\n            : ''\n      ) + $json.best_topic.url\n}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "60c6797c-7e2d-4b77-96f7-edb3946cf02b",
+      "name": "Fetch Best Topic Article",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2368,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const hunterOutput = $('Format Final Output').first().json;\nconst input = $input.first().json;\n\nconst html =\n  input.data ??\n  input.body ??\n  input.html ??\n  input.response ??\n  input.text ??\n  '';\n\nif (!html || String(html).length < 500) {\n  throw new Error('Nema dovoljno HTML sadržaja iz Fetch Best Topic Article.');\n}\n\nfunction cleanText(value) {\n  return String(value || '')\n    .replace(new RegExp('<script[\\\\s\\\\S]*?<\\\\/script>', 'gi'), ' ')\n    .replace(new RegExp('<style[\\\\s\\\\S]*?<\\\\/style>', 'gi'), ' ')\n    .replace(new RegExp('<noscript[\\\\s\\\\S]*?<\\\\/noscript>', 'gi'), ' ')\n    .replace(new RegExp('<svg[\\\\s\\\\S]*?<\\\\/svg>', 'gi'), ' ')\n    .replace(new RegExp('<iframe[\\\\s\\\\S]*?<\\\\/iframe>', 'gi'), ' ')\n    .replace(new RegExp('<header[\\\\s\\\\S]*?<\\\\/header>', 'gi'), ' ')\n    .replace(new RegExp('<footer[\\\\s\\\\S]*?<\\\\/footer>', 'gi'), ' ')\n    .replace(new RegExp('<nav[\\\\s\\\\S]*?<\\\\/nav>', 'gi'), ' ')\n    .replace(new RegExp('<br\\\\s*\\\\/?>', 'gi'), '\\n')\n    .replace(new RegExp('<\\\\/p>', 'gi'), '\\n')\n    .replace(new RegExp('<\\\\/h1>', 'gi'), '\\n')\n    .replace(new RegExp('<\\\\/h2>', 'gi'), '\\n')\n    .replace(new RegExp('<\\\\/h3>', 'gi'), '\\n')\n    .replace(new RegExp('<[^>]+>', 'g'), ' ')\n    .replace(/&nbsp;/g, ' ')\n    .replace(/&amp;/g, '&')\n    .replace(/&quot;/g, '\"')\n    .replace(/&#x27;/g, \"'\")\n    .replace(/&#39;/g, \"'\")\n    .replace(/&lt;/g, '<')\n    .replace(/&gt;/g, '>')\n    .replace(/\\s+\\n/g, '\\n')\n    .replace(/\\n\\s+/g, '\\n')\n    .replace(/\\n{3,}/g, '\\n\\n')\n    .replace(/[ \\t]{2,}/g, ' ')\n    .trim();\n}\n\nconst title =\n  hunterOutput.best_topic && hunterOutput.best_topic.title ||\n  hunterOutput.best_topic && hunterOutput.best_topic.topic ||\n  '';\n\nconst url = (hunterOutput.best_topic && hunterOutput.best_topic.url) || '';\nconst source = (hunterOutput.best_topic && hunterOutput.best_topic.source) || 'Nepoznat izvor';\nconst category = (hunterOutput.best_topic && hunterOutput.best_topic.category) || 'Elita';\n\nlet text = cleanText(html);\n\nconst lines = text\n  .split('\\n')\n  .map(line => line.trim())\n  .filter(Boolean);\n\nconst badLineStarts = [\n  'TV uživo',\n  'Naslovna',\n  'Sportal',\n  'Zabava',\n  'Biznis',\n  'Zdravlje',\n  'Slobodno vreme',\n  'Video',\n  'Galerija',\n  'Foto:',\n  'Najčitanije',\n  'Najnovije',\n  'Život poznatih',\n  'Novinar rubrike',\n  'Podeli',\n  'Komentari',\n  'Pratite nas',\n  'Copyright',\n  'Sva prava',\n  'Impressum'\n];\n\nconst filteredLines = lines.filter(line => {\n  if (line.length < 30) return false;\n\n  for (const bad of badLineStarts) {\n    if (line.startsWith(bad)) return false;\n  }\n\n  return true;\n});\n\ntext = filteredLines.join('\\n\\n').trim();\n\nif (text.length < 400) {\n  text = cleanText(html);\n}\n\nif (text.length < 300) {\n  throw new Error('Izvučeni tekst je prekratak posle čišćenja. Treba ručno proveriti extractor.');\n}\n\nreturn [\n  {\n    json: {\n      ...hunterOutput,\n      source_text: text.slice(0, 8000),\n      source_text_length: text.length,\n      reporter_input_preview: {\n        topic: (hunterOutput.best_topic && hunterOutput.best_topic.topic) || title,\n        source,\n        url,\n        category,\n        source_text_preview: text.slice(0, 1200)\n      }\n    }\n  }\n];\n"
+      },
+      "id": "1a49598d-5e6b-4a27-93b0-ca277cea53be",
+      "name": "Extract Best Topic Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2592,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a strict Serbian news fact extractor.\n\nYour task is NOT to write an article.\n\nExtract only factual information explicitly present in SOURCE MATERIAL.\n\nSOURCE NAME:\n{{ $json.best_topic.source || $json.source_name }}\n\nSOURCE URL:\n{{ $json.best_topic.url || $json.source_url }}\n\nSOURCE MATERIAL:\n{{ $json.source_text }}\n\nReturn ONLY valid JSON.\n\nDo not invent.\nDo not infer.\nDo not summarize loosely.\nDo not add background knowledge.\n\nIf a fact is not explicitly stated, do not include it.\n\nExtract:\n\n1. main_people\nList all named people central to the story.\n\n2. confirmed_facts\nList concrete facts explicitly stated in the source.\n\n3. speculation\nList claims that are presented as speculation, rumor, or unconfirmed.\n\n4. direct_quotes\nList direct quotes exactly as written.\n\n5. source_note\nExplain if the source says another outlet originally reported it, for example Informer.\n\n6. forbidden_claims\nList things the article must NOT claim because they are not supported.\n\nCRITICAL JSON RULES:\n- Return one single valid JSON object and nothing else.\n- Do not wrap the JSON in markdown or code fences.\n- Every double quote that appears INSIDE a string value MUST be escaped as \\\". Serbian quotation marks „ and “ do not need escaping and are preferred inside quotes.\n- Do not include raw unescaped double quotes inside any string value.\n\nReturn exactly this JSON structure:\n\n{\n  \"main_people\": [],\n  \"confirmed_facts\": [],\n  \"speculation\": [],\n  \"direct_quotes\": [],\n  \"source_note\": \"\",\n  \"forbidden_claims\": []\n}",
+        "batching": {}
+      },
+      "id": "ca8d3648-5b20-4691-9cae-621ae9f5dc01",
+      "name": "Extract Source Facts",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        2816,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const finalOutput = $('Format Final Output').first().json;\nconst textOutput = $('Extract Best Topic Text').first().json;\nconst factsOutput = $('Extract Source Facts').first().json;\n\nconst bestTopic = finalOutput.best_topic || {};\nconst sourceText = String(textOutput.source_text || '').trim();\n\nlet sourceFactsRaw =\n  factsOutput.output ??\n  factsOutput.text ??\n  factsOutput.response ??\n  factsOutput.result ??\n  factsOutput.content ??\n  null;\n\nfunction cleanCodeFence(value) {\n  return String(value || '')\n    .replace(/^\\s*```json\\s*/i, '')\n    .replace(/^\\s*```\\s*/i, '')\n    .replace(/\\s*```\\s*$/i, '')\n    .trim();\n}\n\n// source_facts je samo pomoćni hint i NE koristi ga Reporter/Publisher.\n// Zato parsiranje mora biti otporno: ako AI vrati nevalidan JSON,\n// nastavljamo sa praznim objektom umesto da rušimo ceo lanac.\nlet sourceFacts = {};\n\nif (sourceFactsRaw && typeof sourceFactsRaw === 'object') {\n  sourceFacts = sourceFactsRaw;\n} else if (sourceFactsRaw) {\n  let rawText = cleanCodeFence(sourceFactsRaw);\n  const firstBrace = rawText.indexOf('{');\n  const lastBrace = rawText.lastIndexOf('}');\n  if (firstBrace !== -1 && lastBrace !== -1) {\n    rawText = rawText.slice(firstBrace, lastBrace + 1);\n  }\n\n  try {\n    sourceFacts = JSON.parse(rawText);\n  } catch (error) {\n    sourceFacts = {};\n  }\n}\n\nif (!sourceFacts || typeof sourceFacts !== 'object') {\n  sourceFacts = {};\n}\n\nconst url =\n  bestTopic.url ||\n  finalOutput.source_url ||\n  '';\n\nif (!url) {\n  throw new Error('Nedostaje URL najbolje teme.');\n}\n\nif (!sourceText || sourceText.length < 300) {\n  throw new Error('Nedostaje dovoljno source_text sadržaja.');\n}\n\nconst topic =\n  bestTopic.title ||\n  bestTopic.topic ||\n  (finalOutput.reporter_input_preview && finalOutput.reporter_input_preview.topic) ||\n  'Tema iz News Hunter-a';\n\nconst source =\n  bestTopic.source ||\n  finalOutput.source_name ||\n  (finalOutput.reporter_input_preview && finalOutput.reporter_input_preview.source) ||\n  'Nepoznat izvor';\n\nconst category =\n  bestTopic.category ||\n  finalOutput.category ||\n  (finalOutput.reporter_input_preview && finalOutput.reporter_input_preview.category) ||\n  'Elita';\n\nconst hunterScore =\n  bestTopic.priority_score ||\n  finalOutput.hunter_score ||\n  null;\n\nconst hunterReason =\n  bestTopic.reason ||\n  finalOutput.hunter_reason ||\n  '';\n\nconst recommendedAngle =\n  bestTopic.recommended_angle ||\n  finalOutput.recommended_angle ||\n  '';\n\nconst originalTitle =\n  bestTopic.title ||\n  topic;\n\nreturn {\n  json: {\n    execution_status: 'ready_for_reporter',\n\n    topic,\n    source,\n    url,\n    category,\n\n    source_text: sourceText,\n    source_facts: sourceFacts,\n\n    hunter_score: hunterScore,\n    hunter_reason: hunterReason,\n    recommended_angle: recommendedAngle,\n\n    original_title: originalTitle,\n\n    top_topics: finalOutput.top_topics || [],\n    selected_at: new Date().toISOString()\n  }\n};\n"
+      },
+      "id": "b9d56ac9-beea-4fbe-8b7e-6f0dd5608f62",
+      "name": "Prepare Reporter Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3168,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1tmd0kj8HuPUyW6ekZadY2KC8dWfLY4PdiprGv4bEOac/edit?gid=0#gid=0",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "performance",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1tmd0kj8HuPUyW6ekZadY2KC8dWfLY4PdiprGv4bEOac/edit#gid=0"
+        },
+        "options": {}
+      },
+      "id": "bc3bb25c-53bf-43ea-8d1c-3736b1682d08",
+      "name": "Read Recent Decisions",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        3296,
+        -112
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "y864PEkOdzikxhM3",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const current = $('Prepare Reporter Input').first().json;\nconst historyRows = $input.all().map(item => item.json);\n\nfunction normalize(value) {\n  return String(value || '')\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/đ/g, 'dj')\n    .replace(/[^a-z0-9\\s]/g, ' ')\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\n\nfunction normalizeUrl(value) {\n  return String(value || '')\n    .toLowerCase()\n    .replace(/^https?:\\/\\/(www\\.)?/, '')\n    .replace(/\\?.*$/, '')\n    .replace(/\\/$/, '')\n    .trim();\n}\n\nfunction words(value) {\n  const stopWords = new Set([\n    'i', 'je', 'su', 'se', 'sa', 'u', 'na', 'za', 'od', 'do', 'po',\n    'kao', 'koji', 'koja', 'koje', 'ovo', 'ona', 'on', 'oni', 'one',\n    'sada', 'nakon', 'posle', 'zbog', 'evo', 'foto', 'video',\n    'sok', 'šok', 'drama', 'detalji', 'otkriveno', 'poznato',\n    'ekskluzivno', 'hitno', 'skandal', 'isplivalo'\n  ]);\n\n  return normalize(value)\n    .split(' ')\n    .filter(word => word.length >= 4 && !stopWords.has(word));\n}\n\nfunction similarity(a, b) {\n  const aWords = new Set(words(a));\n  const bWords = new Set(words(b));\n\n  if (!aWords.size || !bWords.size) return 0;\n\n  let overlap = 0;\n\n  for (const word of aWords) {\n    if (bWords.has(word)) overlap++;\n  }\n\n  return overlap / Math.min(aWords.size, bWords.size);\n}\n\nconst currentTitle = current.topic || current.original_title || '';\nconst currentUrl = normalizeUrl(current.url || '');\n\nlet duplicate = null;\n\nfor (const row of historyRows) {\n  const oldUrl = normalizeUrl(row.source_url || row.url || '');\n  const oldTitle = row.topic || row.original_title || row.title || '';\n\n  if (currentUrl && oldUrl && currentUrl === oldUrl) {\n    duplicate = {\n      type: 'same_url',\n      old_title: oldTitle,\n      old_url: oldUrl,\n      similarity: 1\n    };\n    break;\n  }\n\n  const score1 = similarity(currentTitle, oldTitle);\n  const score2 = similarity(current.original_title || '', oldTitle);\n  const finalScore = Math.max(score1, score2);\n\n  if (finalScore >= 0.45) {\n    duplicate = {\n      type: 'similar_title',\n      old_title: oldTitle,\n      old_url: oldUrl,\n      similarity: finalScore\n    };\n    break;\n  }\n}\n\nif (duplicate) {\n  return [\n    {\n      json: {\n        ...current,\n        editor_approved: false,\n        editor_decision: 'reject_duplicate',\n        editor_reason: 'Tema je ista ili previše slična već obrađenoj temi.',\n        duplicate_match: duplicate\n      }\n    }\n  ];\n}\n\nreturn [\n  {\n    json: {\n      ...current,\n      editor_approved: true,\n      editor_decision: 'approved',\n      editor_reason: 'Tema nije pronađena u istoriji.'\n    }\n  }\n];"
+      },
+      "id": "5e40a4ec-1225-4c3e-819d-615fe2ee9982",
+      "name": "Editor Duplicate Gate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3520,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "364d142c-eb67-4fe9-8fcd-5bdca1d11e14",
+              "leftValue": "={{ $json.editor_approved }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "ab1cb8e0-07df-492e-9ba4-d5306f21bb80",
+      "name": "IF Editor Approved",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3744,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1tmd0kj8HuPUyW6ekZadY2KC8dWfLY4PdiprGv4bEOac/edit?pli=1&gid=0#gid=0",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "performance",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "date": "={{ $json.selected_at || new Date().toISOString() }}",
+            "source": "={{ $json.source }}",
+            "source_url": "={{ $json.url }}",
+            "topic": "={{ $json.topic }}",
+            "original_title": "={{ $json.original_title }}",
+            "hunter_score": "={{ $json.hunter_score }}",
+            "hunter_reason": "={{ $json.hunter_reason }}",
+            "recommended_angle": "={{ $json.recommended_angle }}",
+            "published": "draft_created"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "date",
+              "displayName": "date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "source_url",
+              "displayName": "source_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "topic",
+              "displayName": "topic",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "original_title",
+              "displayName": "original_title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "hunter_score",
+              "displayName": "hunter_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "hunter_reason",
+              "displayName": "hunter_reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "recommended_angle",
+              "displayName": "recommended_angle",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "published",
+              "displayName": "published",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "b49044db-00ba-4f09-bf9e-0ff7f5a9e85d",
+      "name": "Save Hunter Decision",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        4016,
+        -128
+      ],
+      "retryOnFail": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "y864PEkOdzikxhM3",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "W0R7PBy3qXnpchOU",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/W0R7PBy3qXnpchOU",
+          "cachedResultName": "FokusTV - Reporter Draft Publisher"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "id": "05a15755-0b12-4776-a1cd-aa02ca578fcc",
+      "name": "Send to Reporter",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        3456,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "id": "a484eca2-330c-4727-909b-7dfc49a36b84",
+      "name": "Every  Hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        208
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Define News Source1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Define News Source1": {
+      "main": [
+        [
+          {
+            "node": "Fetch News Source Pages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch News Source Pages": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Read Published History",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Published History": {
+      "main": [
+        [
+          {
+            "node": "Filter Already Published",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Already Published": {
+      "main": [
+        [
+          {
+            "node": "Clean and Prepare Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean and Prepare Articles": {
+      "main": [
+        [
+          {
+            "node": "Prepare Hunter Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Hunter Prompt": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Topics for FokusTV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Topics for FokusTV": {
+      "main": [
+        [
+          {
+            "node": "Read Decisions for Selection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Evaluate Topics for FokusTV",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Extract Source Facts",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Topic Ranking Schema": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Evaluate Topics for FokusTV",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Decisions for Selection": {
+      "main": [
+        [
+          {
+            "node": "Format Final Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Final Output": {
+      "main": [
+        [
+          {
+            "node": "Fetch Best Topic Article",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Best Topic Article": {
+      "main": [
+        [
+          {
+            "node": "Extract Best Topic Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Best Topic Text": {
+      "main": [
+        [
+          {
+            "node": "Extract Source Facts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Source Facts": {
+      "main": [
+        [
+          {
+            "node": "Prepare Reporter Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Reporter Input": {
+      "main": [
+        [
+          {
+            "node": "Read Recent Decisions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Recent Decisions": {
+      "main": [
+        [
+          {
+            "node": "Editor Duplicate Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Editor Duplicate Gate": {
+      "main": [
+        [
+          {
+            "node": "IF Editor Approved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Editor Approved": {
+      "main": [
+        [
+          {
+            "node": "Save Hunter Decision",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send to Reporter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every  Hour": {
+      "main": [
+        [
+          {
+            "node": "Define News Source1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "ffa9d2f5-2114-4010-9ea7-869aacdf4b03",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp",
+    "instanceId": "19919265019df2410ce48bcc4dd3d28a0d3ba36274ec03146834a410255ebd27"
+  },
+  "nodeGroups": [],
+  "id": "n80RLeAPnQahvpvI",
+  "tags": []
+}
